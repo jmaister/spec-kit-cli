@@ -71,7 +71,9 @@ type Model struct {
 	overlay overlay
 	spin    spinner.Model
 
-	featIdx int
+	featIdx    int
+	stepsFocus bool // dashboard: workflow pane focused
+	stepIdx    int
 
 	// tasks screen
 	taskCursor int
@@ -618,22 +620,79 @@ func (m *Model) cancelJob() {
 	m.overlay = ovConfirm
 }
 
-func (m *Model) stepKey(msg tea.KeyMsg) (string, bool) {
-	if !key.Matches(msg, m.keys.Steps) {
-		return "", false
+// dashSteps lists the workflow steps shown for the selected feature (only
+// project-level steps when there is no feature yet).
+func (m *Model) dashSteps() []speckit.Step {
+	if m.feature() == nil {
+		return speckit.Steps[:2]
 	}
-	n := int(msg.String()[0] - '1')
-	if n < 0 || n >= len(speckit.Steps) {
-		return "", false
+	return speckit.Steps
+}
+
+// focusNextStep moves the workflow cursor onto the suggested next step.
+func (m *Model) focusNextStep() {
+	next := m.proj.NextStep(m.feature())
+	for i, s := range m.dashSteps() {
+		if s.ID == next {
+			m.stepIdx = i
+			return
+		}
 	}
-	return speckit.Steps[n].ID, true
 }
 
 func (m *Model) updateDashboard(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	k := m.keys
-	if id, ok := m.stepKey(msg); ok {
-		return m, m.openStepInput(id)
+	steps := m.dashSteps()
+	switch {
+	case key.Matches(msg, k.Right):
+		if !m.stepsFocus {
+			m.stepsFocus = true
+			m.focusNextStep()
+		}
+		return m, nil
+	case key.Matches(msg, k.Left), m.stepsFocus && key.Matches(msg, k.Back):
+		m.stepsFocus = false
+		return m, nil
+	case key.Matches(msg, k.NextStep):
+		next := m.proj.NextStep(m.feature())
+		if next == "" {
+			m.setFlash(false, "✔ feature complete — nothing left to run")
+			return m, nil
+		}
+		return m, m.openStepInput(next)
+	case key.Matches(msg, k.Implement):
+		return m, m.openStepInput("implement")
+	case key.Matches(msg, k.Edit):
+		f := m.feature()
+		if f == nil {
+			return m, nil
+		}
+		for _, name := range []string{"spec.md", "plan.md", "tasks.md"} {
+			if f.Has(name) {
+				return m, m.openEditor(f.Path(name), 0)
+			}
+		}
+		return m, nil
 	}
+
+	if m.stepsFocus {
+		switch {
+		case key.Matches(msg, k.Up):
+			m.stepIdx = max(0, m.stepIdx-1)
+		case key.Matches(msg, k.Down):
+			m.stepIdx = min(len(steps)-1, m.stepIdx+1)
+		case key.Matches(msg, k.Top):
+			m.stepIdx = 0
+		case key.Matches(msg, k.Bottom):
+			m.stepIdx = len(steps) - 1
+		case key.Matches(msg, k.Enter):
+			if m.stepIdx < len(steps) {
+				return m, m.openStepInput(steps[m.stepIdx].ID)
+			}
+		}
+		return m, nil
+	}
+
 	switch {
 	case key.Matches(msg, k.Up):
 		if m.featIdx > 0 {
@@ -648,22 +707,10 @@ func (m *Model) updateDashboard(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, k.Top):
 		m.featIdx, m.taskCursor = 0, 0
 	case key.Matches(msg, k.Bottom):
-		m.featIdx, m.taskCursor = len(m.proj.Features)-1, 0
+		m.featIdx, m.taskCursor = max(0, len(m.proj.Features)-1), 0
 	case key.Matches(msg, k.Enter):
 		if m.feature() != nil {
 			m.screen = scrTasks
-		}
-	case key.Matches(msg, k.Implement):
-		return m, m.openStepInput("implement")
-	case key.Matches(msg, k.Edit):
-		f := m.feature()
-		if f == nil {
-			return m, nil
-		}
-		for _, name := range []string{"spec.md", "plan.md", "tasks.md"} {
-			if f.Has(name) {
-				return m, m.openEditor(f.Path(name), 0)
-			}
 		}
 	}
 	return m, nil

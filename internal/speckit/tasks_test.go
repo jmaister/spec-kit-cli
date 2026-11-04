@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 const sample = `# Tasks: Photo Albums
@@ -88,4 +89,27 @@ func TestSetTaskDone(t *testing.T) {
 	if !tf3.Tasks[4].Done {
 		t.Error("T005 should be done")
 	}
+}
+
+func TestStage(t *testing.T) {
+	p := &Project{Constitution: true, State: &State{Runs: map[string]time.Time{}}}
+	f := &Feature{Name: "001-x", Files: map[string]bool{}}
+	check := func(wantStage, wantPhase string) {
+		t.Helper()
+		if s, ph := p.Stage(f); s != wantStage || ph != wantPhase {
+			t.Errorf("Stage = %q/%q, want %q/%q", s, ph, wantStage, wantPhase)
+		}
+	}
+	check("New", "")
+	f.Files["spec.md"] = true
+	check("Specified", "")
+	f.Files["plan.md"] = true
+	check("Planned", "")
+	f.Files["tasks.md"] = true
+	f.Tasks = parseTasks("tasks.md", sample)
+	check("Implementing", "Phase 2: Foundational") // sample has phase 1 done
+	for i := range f.Tasks.Tasks {
+		f.Tasks.Tasks[i].Done = true
+	}
+	check("Done", "")
 }

@@ -42,8 +42,11 @@ func (m *Model) taskRows(f *speckit.Feature) []taskRow {
 func (m *Model) updateTasks(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	k := m.keys
 	f := m.feature()
-	if id, ok := m.stepKey(msg); ok {
-		return m, m.openStepInput(id)
+	if key.Matches(msg, k.NextStep) {
+		if next := m.proj.NextStep(f); next != "" {
+			return m, m.openStepInput(next)
+		}
+		return m, nil
 	}
 	if key.Matches(msg, k.Back) {
 		m.screen = scrDashboard

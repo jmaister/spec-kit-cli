@@ -10,7 +10,7 @@ type keyMap struct {
 	Up, Down, Top, Bottom       key.Binding
 	PageUp, PageDown            key.Binding
 	Enter, Back                 key.Binding
-	Steps                       key.Binding
+	Left, Right, NextStep       key.Binding
 	Implement                   key.Binding
 	Toggle, RunTask, RunPhase   key.Binding
 	HideDone, Follow, ClearJobs key.Binding
@@ -42,7 +42,9 @@ func newKeyMap() keyMap {
 		PageDown:   b([]string{"pgdown", "ctrl+d"}, "pgdn", "page down"),
 		Enter:      b([]string{"enter"}, "enter", "open / run"),
 		Back:       b([]string{"esc"}, "esc", "back"),
-		Steps:      b([]string{"1", "2", "3", "4", "5", "6", "7", "8"}, "1-8", "run workflow step"),
+		Left:       b([]string{"left"}, "←", "features"),
+		Right:      b([]string{"right"}, "→", "workflow steps"),
+		NextStep:   b([]string{"s"}, "s", "run next step"),
 		Implement:  b([]string{"i"}, "i", "implement feature"),
 		Toggle:     b([]string{" "}, "space", "toggle task"),
 		RunTask:    b([]string{"x"}, "x", "run task"),

@@ -105,9 +105,9 @@ func (m *Model) viewFooter() string {
 	var hints [][2]string
 	switch m.screen {
 	case scrDashboard:
-		hints = [][2]string{{"↑↓", "feature"}, {"enter", "tasks"}, {"1-8", "run step"}, {"i", "implement"}, {"n", "new"}, {"e", "edit"}}
+		hints = [][2]string{{"↑↓", "move"}, {"→/←", "steps/features"}, {"enter", "open/run"}, {"s", "next step"}, {"i", "implement"}, {"n", "new"}, {"e", "edit"}}
 	case scrTasks:
-		hints = [][2]string{{"↑↓", "move"}, {"space", "toggle"}, {"x", "run task"}, {"X", "run phase"}, {"enter", "fold"}, {"f", "hide done"}, {"e", "edit"}}
+		hints = [][2]string{{"↑↓", "move"}, {"space", "toggle"}, {"s", "next step"}, {"x", "run task"}, {"X", "run phase"}, {"enter", "fold"}, {"f", "hide done"}, {"e", "edit"}}
 	case scrLogs:
 		hints = [][2]string{{"↑↓", "job"}, {"pgup/pgdn", "scroll"}, {"F", "follow"}, {"c", "clear"}, {"^x", "cancel"}}
 	}
@@ -134,9 +134,13 @@ func (m *Model) viewDashboard(h int) string {
 		}
 		return m.place(h, sModal.Render(msg))
 	}
-	lw := clamp(m.w*38/100, 30, 56)
-	left := sPane.Width(lw - 2).Height(h - 2).Render(clipLines(m.viewFeatureList(lw-4, h-2), h-2))
-	right := sPaneFocus.Width(m.w - lw - 4).Height(h - 2).Render(clipLines(m.viewFeatureDetail(m.w-lw-6), h-2))
+	lw := clamp(m.w*45/100, 34, 64)
+	listPane, stepPane := sPaneFocus, sPane
+	if m.stepsFocus {
+		listPane, stepPane = sPane, sPaneFocus
+	}
+	left := listPane.Width(lw - 2).Height(h - 2).Render(clipLines(m.viewFeatureList(lw-4, h-2), h-2))
+	right := stepPane.Width(m.w - lw - 4).Height(h - 2).Render(clipLines(m.viewFeatureDetail(m.w-lw-6), h-2))
 	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 }
 
@@ -146,7 +150,7 @@ func (m *Model) viewFeatureList(w, h int) string {
 	if m.stepRunning("", "constitution") {
 		cons = m.spin.View() + sAccent2.Render(" constitution")
 	} else if !m.proj.Constitution {
-		cons = sWarn.Render(icPending+" constitution missing") + sMuted.Render(" (1)")
+		cons = sWarn.Render(icPending + " constitution missing — press s")
 	}
 	lines = append(lines, sHeading.Render(fmt.Sprintf("Features (%d)", len(m.proj.Features))), cons, "")
 	if m.stepRunning("", "specify") {
@@ -156,7 +160,7 @@ func (m *Model) viewFeatureList(w, h int) string {
 		lines = append(lines, sMuted.Render("No features yet."), "", "Press "+sKey.Render("n")+" to specify one.")
 	}
 	header := len(lines)
-	per := 3
+	const per = 4
 	visible := max(1, (h-header)/per)
 	start := 0
 	if m.featIdx >= visible {
@@ -164,20 +168,30 @@ func (m *Model) viewFeatureList(w, h int) string {
 	}
 	for i := start; i < len(m.proj.Features) && i < start+visible; i++ {
 		f := m.proj.Features[i]
-		running := len(m.runningJobsFor(f.Name)) > 0
-		icon := " "
-		if running {
-			icon = m.spin.View()
+		selected := i == m.featIdx
+		spin := ""
+		if len(m.runningJobsFor(f.Name)) > 0 {
+			spin = " " + m.spin.View()
 		}
-		name := truncate(f.Name, w-4)
-		var row1 string
-		if i == m.featIdx {
-			row1 = sSelected.Width(w).Render(sAccent.Render("▸ ") + name + " " + icon)
-		} else {
-			row1 = "  " + name + " " + icon
+		marker := "  "
+		if selected {
+			marker = sAccent.Render("▸ ")
 		}
-		row2 := "  " + m.stepIcons(f) + "  " + m.taskBar(f, max(6, w-22))
-		lines = append(lines, row1, row2, "")
+		row1 := marker + sHeading.Render(truncate(f.Name, w-4)) + spin
+
+		stage, phase := m.proj.Stage(f)
+		row2 := "  " + stageStyle(stage).Render(stage)
+		if phase != "" {
+			row2 += sMuted.Render(" · " + phase)
+		}
+		row2 = truncate(row2, w)
+
+		row3 := "  " + m.taskBar(f, max(8, w-16))
+		if selected && !m.stepsFocus {
+			sel := sSelected.Width(w)
+			row1, row2, row3 = sel.Render(row1), sel.Render(row2), sel.Render(row3)
+		}
+		lines = append(lines, row1, row2, row3, "")
 	}
 	if start+visible < len(m.proj.Features) {
 		lines = append(lines, sMuted.Render(fmt.Sprintf("  ↓ %d more", len(m.proj.Features)-start-visible)))
@@ -185,65 +199,50 @@ func (m *Model) viewFeatureList(w, h int) string {
 	return strings.Join(lines, "\n")
 }
 
-// stepIcons renders a compact pipeline: one glyph per workflow step.
-func (m *Model) stepIcons(f *speckit.Feature) string {
-	var b strings.Builder
-	for _, s := range speckit.Steps {
-		b.WriteString(m.stepGlyph(f, s))
+func stageStyle(stage string) lipgloss.Style {
+	switch stage {
+	case "Done":
+		return sOK.Bold(true)
+	case "Implementing":
+		return sAccent2.Bold(true)
+	case "Ready to implement":
+		return sAccent.Bold(true)
+	case "New":
+		return sMuted
 	}
-	return b.String()
-}
-
-func (m *Model) stepGlyph(f *speckit.Feature, s speckit.Step) string {
-	if m.stepRunning(f.Name, s.ID) && !s.ProjectScope {
-		return m.spin.View()
-	}
-	switch m.proj.Status(f, s.ID) {
-	case speckit.StepDone:
-		return sOK.Render(icDone)
-	case speckit.StepPartial:
-		return sWarn.Render(icPartial)
-	}
-	if s.Optional {
-		return sFaint.Render(icPending)
-	}
-	return sMuted.Render(icPending)
+	return sWarn
 }
 
 func (m *Model) taskBar(f *speckit.Feature, w int) string {
 	done, total := f.Tasks.Progress()
 	if total == 0 {
-		return sFaint.Render("no tasks")
+		return sFaint.Render(strings.Repeat("░", w)) + sMuted.Render("  no tasks")
 	}
-	return bar(float64(done)/float64(total), w) + sMuted.Render(fmt.Sprintf(" %d/%d", done, total))
+	pct := float64(done) / float64(total)
+	return bar(pct, w) + sMuted.Render(fmt.Sprintf(" %d/%d %3.0f%%", done, total, pct*100))
 }
 
 func (m *Model) viewFeatureDetail(w int) string {
 	f := m.feature()
+	steps := m.dashSteps()
 	var lines []string
 	if f == nil {
 		lines = append(lines, sHeading.Render("Getting started"), "")
-		for i, s := range speckit.Steps[:2] {
-			lines = append(lines, m.stepLine(nil, i, s, w))
-		}
-		lines = append(lines, "", sMuted.Render("Press ")+sKey.Render("n")+sMuted.Render(" to describe your first feature."))
-		return strings.Join(lines, "\n")
+	} else {
+		lines = append(lines, sTitle.Render(f.Name), sFaint.Render(truncate(relPath(m.proj.Root, f.Dir), w)), "")
+		lines = append(lines, sHeading.Render("Workflow"))
 	}
-	lines = append(lines, sTitle.Render(f.Name), sFaint.Render(truncate(relPath(m.proj.Root, f.Dir), w)), "")
-	lines = append(lines, sHeading.Render("Workflow"))
-	for i, s := range speckit.Steps {
-		lines = append(lines, m.stepLine(f, i, s, w))
+	for i, s := range steps {
+		lines = append(lines, m.stepLine(f, s, m.stepsFocus && i == m.stepIdx, w))
 	}
 	if next := m.proj.NextStep(f); next != "" {
-		idx := 0
-		for i, s := range speckit.Steps {
-			if s.ID == next {
-				idx = i + 1
-			}
-		}
-		lines = append(lines, "", sMuted.Render("Next → press ")+sKey.Render(fmt.Sprint(idx))+sMuted.Render(" to run ")+sAccent.Render(stepTitle(next)))
-	} else {
+		lines = append(lines, "", sMuted.Render("Next: ")+sAccent.Render(stepTitle(next))+sMuted.Render(" — press ")+
+			sKey.Render("s")+sMuted.Render(" to run it, or ")+sKey.Render("→")+sMuted.Render(" to pick a step"))
+	} else if f != nil {
 		lines = append(lines, "", sOK.Render("✔ Feature complete"))
+	}
+	if f == nil {
+		return strings.Join(lines, "\n")
 	}
 
 	if f.Tasks != nil && len(f.Tasks.Tasks) > 0 {
@@ -280,7 +279,7 @@ func (m *Model) viewFeatureDetail(w int) string {
 	return strings.Join(lines, "\n")
 }
 
-func (m *Model) stepLine(f *speckit.Feature, i int, s speckit.Step, w int) string {
+func (m *Model) stepLine(f *speckit.Feature, s speckit.Step, selected bool, w int) string {
 	var icon string
 	name := ""
 	if f != nil {
@@ -310,7 +309,15 @@ func (m *Model) stepLine(f *speckit.Feature, i int, s speckit.Step, w int) strin
 	if running {
 		desc = "running…"
 	}
-	return fmt.Sprintf(" %s %s %s %s", sKey.Render(fmt.Sprint(i+1)), icon, title, sMuted.Render(truncate(desc, max(5, w-22))))
+	marker := "  "
+	if selected {
+		marker = sAccent.Render("▸ ")
+	}
+	line := fmt.Sprintf("%s%s %s %s", marker, icon, title, sMuted.Render(truncate(desc, max(5, w-20))))
+	if selected {
+		line = sSelected.Width(w).Render(line)
+	}
+	return line
 }
 
 // ---------- tasks screen ----------
@@ -328,7 +335,8 @@ func (m *Model) viewTasks(h int) string {
 		if m.stepRunning(f.Name, "tasks") {
 			msg += m.spin.View() + sAccent2.Render(" generating tasks…")
 		} else {
-			msg += sMuted.Render("Press ") + sKey.Render("6") + sMuted.Render(" to generate tasks (after plan: ") + sKey.Render("4") + sMuted.Render(").")
+			msg += sMuted.Render("Press ") + sKey.Render("s") + sMuted.Render(" to run the next step (") +
+				sAccent.Render(stepTitle(m.proj.NextStep(f))) + sMuted.Render(").")
 		}
 		return pane.Render(msg)
 	}
@@ -417,12 +425,13 @@ func (m *Model) viewHelp() string {
 		return b.String()
 	}
 	global := sec("Global", [][2]string{
-		{"tab / S-tab", "switch screen"}, {"n", "new feature (/speckit.specify)"}, {"1-8", "run workflow step"},
+		{"tab / S-tab", "switch screen"}, {"n", "new feature (specify)"}, {"s", "run next workflow step"},
 		{"i", "implement whole feature"}, {"m", "choose model"}, {"a", "choose agent (claude, copilot…)"},
 		{"p", "cycle permission mode"}, {"l", "logs"}, {"I", "init spec-kit in this dir"},
 		{"r", "refresh"}, {"^x", "cancel running job"}, {"h / ?", "this help"}, {"q", "quit"},
 	})
-	dash := sec("Dashboard", [][2]string{{"↑↓ / jk", "select feature"}, {"enter", "open tasks"}, {"e", "edit spec.md"}})
+	dash := sec("Dashboard", [][2]string{{"↑↓ / jk", "move"}, {"→", "focus workflow steps"}, {"←", "back to features"},
+		{"enter", "features: open tasks"}, {"", "steps: run selected step"}, {"e", "edit spec.md"}})
 	tasks := sec("Tasks", [][2]string{
 		{"space", "toggle checkbox (on phase: all)"}, {"x", "run selected task / phase"}, {"X", "run whole phase"},
 		{"enter ←→", "fold / unfold phase"}, {"f", "hide completed"}, {"e", "edit tasks.md at line"}, {"esc", "back"},
@@ -435,7 +444,7 @@ func (m *Model) viewHelp() string {
 		if s.Optional {
 			opt = sMuted.Render(" (optional)")
 		}
-		steps.WriteString(fmt.Sprintf("  %s %s%s\n     %s\n", sKey.Render(fmt.Sprint(i+1)), sAccent.Render(agent.ClaudeSlashCommand(m.proj.Root, s.ID)), opt, sMuted.Render(s.Description)))
+		steps.WriteString(fmt.Sprintf("  %d. %s%s\n     %s\n", i+1, sAccent.Render(agent.ClaudeSlashCommand(m.proj.Root, s.ID)), opt, sMuted.Render(s.Description)))
 	}
 	col1 := global + "\n" + dash
 	col2 := tasks + "\n" + logs

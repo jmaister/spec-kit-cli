@@ -1,1 +1,5 @@
 bin/
+
+# spec-kit scaffolding created when running sk inside this repo
+.specify/
+.claude/

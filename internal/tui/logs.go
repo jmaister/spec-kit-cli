@@ -44,7 +44,7 @@ func (m *Model) refreshLogs() {
 	}
 	j := m.selectedJob()
 	if j == nil {
-		m.vp.SetContent(sMuted.Render("No jobs yet. Run a workflow step (1-8) or create a feature (n)."))
+		m.vp.SetContent(sMuted.Render("No jobs yet. Run a workflow step (s, or → and enter on the dashboard) or create a feature (n)."))
 		return
 	}
 	atBottom := m.vp.AtBottom()

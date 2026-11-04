@@ -104,6 +104,38 @@ func (p *Project) Status(f *Feature, stepID string) StepStatus {
 	return StepPending
 }
 
+// Stage summarizes where a feature is in the workflow, e.g. "Planned" or
+// "Implementing". phase is the first tasks.md phase with pending tasks (the
+// one being worked on) and is empty when there are no pending tasks.
+func (p *Project) Stage(f *Feature) (stage, phase string) {
+	if f == nil {
+		return "", ""
+	}
+	if f.Tasks != nil {
+		for _, ph := range f.Tasks.Phases {
+			if d, t := ph.Progress(f.Tasks); d < t {
+				phase = ph.Title
+				break
+			}
+		}
+	}
+	switch {
+	case p.Status(f, "implement") == StepDone:
+		return "Done", ""
+	case p.Status(f, "implement") == StepPartial:
+		return "Implementing", phase
+	case f.Has("tasks.md"):
+		return "Ready to implement", phase
+	case f.Has("plan.md"):
+		return "Planned", ""
+	case f.Has("spec.md") && f.HasClarifications:
+		return "Clarified", ""
+	case f.Has("spec.md"):
+		return "Specified", ""
+	}
+	return "New", ""
+}
+
 // NextStep suggests the next required step for a feature.
 func (p *Project) NextStep(f *Feature) string {
 	if !p.Constitution {
