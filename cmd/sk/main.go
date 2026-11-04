@@ -1,4 +1,4 @@
-// speckit is a terminal UI for GitHub spec-kit projects: see the workflow,
+// sk is a terminal UI for GitHub spec-kit projects: see the workflow,
 // features, phases and tasks at a glance, and run spec-kit commands through an
 // AI agent CLI (Claude Code by default) without memorizing them.
 package main
@@ -23,7 +23,7 @@ func main() {
 	model := flag.String("model", "", "model for the selected agent (saved to config)")
 	showVersion := flag.Bool("version", false, "print version")
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: speckit [flags] [dir]\n\nFlags:\n")
+		fmt.Fprintf(os.Stderr, "Usage: sk [flags] [dir]\n\nFlags:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nConfig: %s\n", config.Path())
 	}

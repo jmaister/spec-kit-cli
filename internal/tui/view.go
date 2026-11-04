@@ -55,7 +55,7 @@ func (m *Model) place(h int, s string) string {
 
 func (m *Model) viewHeader() string {
 	name := filepath.Base(m.proj.Root)
-	left := sTitle.Render("◆ speckit") + " " + sMuted.Render(name)
+	left := sTitle.Render("◆ sk") + " " + sMuted.Render(name)
 	ag := m.agent()
 	agentS := ag.Name()
 	if !ag.Available() {
@@ -440,7 +440,7 @@ func (m *Model) viewHelp() string {
 	} else if m.h > 50 {
 		content += "\n" + steps.String()
 	}
-	return sModal.Render(sTitle.Render("speckit — keyboard shortcuts") + "\n\n" + content + "\n" + sMuted.Render("esc to close"))
+	return sModal.Render(sTitle.Render("sk — keyboard shortcuts") + "\n\n" + content + "\n" + sMuted.Render("esc to close"))
 }
 
 func (m *Model) viewInput() string {

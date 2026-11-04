@@ -1,11 +1,11 @@
-BIN := speckit
+BIN := sk
 
 .PHONY: build install test run
 build:
-	go build -o bin/$(BIN) .
+	go build -o bin/$(BIN) ./cmd/sk
 
 install:
-	go build -o $(shell go env GOPATH)/bin/$(BIN) .
+	go install ./cmd/sk
 
 test:
 	go vet ./... && go test ./...

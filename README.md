@@ -1,4 +1,4 @@
-# speckit — TUI para spec-kit
+# sk — TUI para spec-kit
 
 Terminal UI en Go ([Bubble Tea](https://github.com/charmbracelet/bubbletea)) para trabajar con
 [GitHub spec-kit](https://github.com/github/spec-kit) sin memorizar comandos: ves features, fases y
@@ -6,7 +6,7 @@ tareas con barras de progreso, checkboxes y spinners en lo que se está ejecutan
 paso del flujo Spec-Driven Development con una tecla.
 
 ```
-◆ speckit demo                          agent Claude Code  model sonnet  perm acceptEdits  ⣽ 1 running
+◆ sk demo                               agent Claude Code  model sonnet  perm acceptEdits  ⣽ 1 running
  Dashboard │ Tasks │ Logs
 ╭──────────────────────────────╮╭───────────────────────────────────────────────────────────╮
 │ Features (2)                 ││ 001-photo-albums                                          │
@@ -22,9 +22,9 @@ paso del flujo Spec-Driven Development con una tecla.
 ## Instalación
 
 ```bash
-go install github.com/jmaister/spec-kit-cli@latest   # instala el binario "spec-kit-cli"; o: make install (→ "speckit")
-speckit            # en el directorio del proyecto
-speckit -C ~/code/app -agent claude -model opus
+go install github.com/jmaister/spec-kit-cli/cmd/sk@latest   # o: make install
+sk                 # en el directorio del proyecto
+sk -C ~/code/app -agent claude -model opus
 ```
 
 Requisitos: el CLI del agente (`claude`, `copilot`, …) y, para `I` (init), `specify` o `uvx`.
@@ -97,7 +97,7 @@ streaming como con Claude), implementa `agent.Agent` y llama a `agent.Register` 
 ## Estructura
 
 ```
-main.go                  flags y arranque
+cmd/sk/main.go           flags y arranque
 internal/config          preferencias (~/.config/speckit-tui/config.json)
 internal/speckit         modelo del proyecto: features, tasks.md (parse/toggle), workflow
 internal/agent           interfaz Agent + claude, copilot, agentes por plantilla
