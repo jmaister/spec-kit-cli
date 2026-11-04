@@ -42,6 +42,7 @@ func (m *Model) refreshLogs() {
 	if m.screen != scrLogs {
 		return
 	}
+	m.layoutLogs() // footer height depends on the screen
 	j := m.selectedJob()
 	if j == nil {
 		m.vp.SetContent(sMuted.Render("No jobs yet. Run a workflow step (s, or → and enter on the dashboard) or create a feature (n)."))
@@ -144,7 +145,7 @@ func (m *Model) viewLogs(h int) string {
 			icon = sWarn.Render("■")
 		}
 		title := truncate(fmt.Sprintf("#%d %s", j.ID, j.Title), inner-2)
-		meta := sMuted.Render(fmt.Sprintf("   %s · %s", fmtDur(j.Duration()), displayModel(j.Model)))
+		meta := sMuted.Render(fmt.Sprintf("   %s · %s", fmtDur(j.Duration()), m.jobModel(j)))
 		if s.Cost > 0 {
 			meta += sMuted.Render(fmt.Sprintf(" · $%.3f", s.Cost))
 		}

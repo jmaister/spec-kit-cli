@@ -101,6 +101,8 @@ type Model struct {
 	confirmMsg string
 	confirmFn  func() tea.Cmd
 
+	seenModel map[string]string // agent id -> last model reported by a run
+
 	flash    string
 	flashErr bool
 	flashAt  time.Time
@@ -132,7 +134,7 @@ func New(cfg *config.Config, root string) (*Model, error) {
 
 	m := &Model{
 		cfg: cfg, proj: proj, jobs: runner.NewManager(), keys: newKeyMap(),
-		spin: sp, collapsed: map[string]bool{}, follow: true,
+		spin: sp, collapsed: map[string]bool{}, follow: true, seenModel: map[string]string{},
 		input: ta, customInput: ti, vp: viewport.New(80, 20),
 	}
 	if _, ok := agent.Get(cfg.Agent); !ok {
@@ -305,7 +307,7 @@ func (m *Model) startStep(p pendingRun, args string) tea.Cmd {
 		title = stepTitle(step)
 	}
 	_, err := m.jobs.Start(runner.Spec{
-		Title: title, Step: step, Feature: feat, Agent: ag.ID(), Model: req.Model, TaskIDs: p.taskIDs,
+		Title: title, Step: step, Feature: feat, Agent: ag.ID(), Model: agent.ResolveModel(ag, root, req.Model), TaskIDs: p.taskIDs,
 		Build:  func(ctx context.Context) (*exec.Cmd, error) { return ag.Command(ctx, req) },
 		Parser: ag.Parser(),
 		OnSuccess: func() {
@@ -438,6 +440,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tick()
 
 	case jobUpdateMsg:
+		for _, j := range m.jobs.Jobs() {
+			if j.ID == msg.JobID {
+				if mdl := j.Snapshot().Model; mdl != "" {
+					m.seenModel[j.Agent] = mdl
+				}
+			}
+		}
 		if msg.Done {
 			m.reload()
 			for _, j := range m.jobs.Jobs() {
@@ -780,7 +789,7 @@ func (m *Model) updatePicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.cfg.SetModel(m.agent().ID(), v)
 			m.saveCfg()
 			m.overlay, m.customMode = ovNone, false
-			m.setFlash(false, "model: %s", displayModel(v))
+			m.setFlash(false, "model: %s", m.modelName(v))
 			return m, nil
 		}
 		var cmd tea.Cmd
@@ -808,7 +817,7 @@ func (m *Model) updatePicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, m.customInput.Focus()
 			}
 			m.cfg.SetModel(m.agent().ID(), item)
-			m.setFlash(false, "model: %s", displayModel(item))
+			m.setFlash(false, "model: %s", m.modelName(item))
 		case pickAgent:
 			m.cfg.Agent = item
 			a := m.agent()
@@ -827,9 +836,27 @@ func (m *Model) updatePicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func displayModel(m string) string {
-	if m == "" {
-		return "default"
+// modelName is the model a run uses with the given selection: the selected
+// one, the agent's configured default (e.g. ~/.claude/settings.json), or the
+// last model the agent reported.
+func (m *Model) modelName(selected string) string {
+	ag := m.agent()
+	if n := agent.ResolveModel(ag, m.proj.Root, selected); n != "" {
+		return n
 	}
-	return m
+	if n := m.seenModel[ag.ID()]; n != "" {
+		return n
+	}
+	return "unknown"
+}
+
+// jobModel is the model shown for a job: reported by the agent when known.
+func (m *Model) jobModel(j *runner.Job) string {
+	if s := j.Snapshot().Model; s != "" {
+		return s
+	}
+	if j.Model != "" {
+		return j.Model
+	}
+	return "unknown"
 }

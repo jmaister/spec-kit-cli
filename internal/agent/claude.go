@@ -33,6 +33,32 @@ func (c *Claude) PermissionModes() []string {
 	return []string{"acceptEdits", "auto", "bypassPermissions", "dontAsk", "plan"}
 }
 
+// DefaultModel mirrors Claude Code's precedence when --model isn't passed:
+// ANTHROPIC_MODEL, then project local/shared settings, then user settings.
+func (c *Claude) DefaultModel(root string) string {
+	if v := os.Getenv("ANTHROPIC_MODEL"); v != "" {
+		return v
+	}
+	home, _ := os.UserHomeDir()
+	for _, p := range []string{
+		filepath.Join(root, ".claude", "settings.local.json"),
+		filepath.Join(root, ".claude", "settings.json"),
+		filepath.Join(home, ".claude", "settings.json"),
+	} {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			continue
+		}
+		var st struct {
+			Model string `json:"model"`
+		}
+		if json.Unmarshal(b, &st) == nil && st.Model != "" {
+			return st.Model
+		}
+	}
+	return ""
+}
+
 func (c *Claude) Available() bool {
 	_, err := exec.LookPath(c.Bin)
 	return err == nil
@@ -133,11 +159,11 @@ func (p *claudeParser) Parse(line string) []Event {
 	switch m.Type {
 	case "system":
 		if m.Subtype == "init" {
-			model := m.Model
-			if model == "" {
-				model = "default"
+			ev := Event{Kind: EvInfo, Text: "session started", Model: m.Model}
+			if m.Model != "" {
+				ev.Text += " · model " + m.Model
 			}
-			out = append(out, Event{Kind: EvInfo, Text: "session started · model " + model})
+			out = append(out, ev)
 		}
 	case "assistant":
 		for _, c := range m.Message.Content {

@@ -80,6 +80,9 @@ executed, so you learn the workflow without having to remember it.
 - **spec-kit versions**: `I` runs `specify init --integration <agent> --non-interactive`, or
   `--ai` if the installed `specify` is an older release. Commands are detected from the installed
   layout: skills `/speckit-plan` (current), `/speckit.plan` or `/plan`.
+- **Model shown**: the model you pick with `m`. Otherwise it's the agent's own setting (for Claude:
+  `ANTHROPIC_MODEL`, `.claude/settings.local.json`, `.claude/settings.json`, `~/.claude/settings.json`).
+  Jobs show the model the agent actually reported.
 - **Per-task spinner**: during `implement`, sk tracks the last `T###` the agent mentioned.
 - **Logs**: readable output (text, tool calls, errors, cost). The raw log is saved in
   `~/.cache/speckit-tui/logs/`.

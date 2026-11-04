@@ -13,7 +13,9 @@ import (
 	"github.com/jmaister/spec-kit-cli/internal/speckit"
 )
 
-func (m *Model) bodyHeight() int { return max(6, m.h-4) }
+// bodyHeight is the space between the header (2 lines) and the footer
+// (flash line + key hints).
+func (m *Model) bodyHeight() int { return max(6, m.h-3-len(m.hintLines())) }
 
 func (m *Model) View() string {
 	if m.w == 0 {
@@ -62,7 +64,7 @@ func (m *Model) viewHeader() string {
 		agentS = sErr.Render(agentS + " (missing)")
 	}
 	right := sMuted.Render("agent ") + agentS +
-		sMuted.Render("  model ") + sAccent.Render(displayModel(m.cfg.Model(ag.ID())))
+		sMuted.Render("  model ") + sAccent.Render(m.modelName(m.cfg.Model(ag.ID())))
 	if pm := m.permMode(); pm != "" {
 		right += sMuted.Render("  perm ") + permStyle(pm).Render(pm)
 	}
@@ -93,6 +95,48 @@ func permStyle(pm string) lipgloss.Style {
 	return sWarn
 }
 
+// footerHints returns the key hints for the current screen and focus,
+// followed by the global ones.
+func (m *Model) footerHints() (local, global [][2]string) {
+	switch m.screen {
+	case scrDashboard:
+		if m.stepsFocus {
+			local = [][2]string{{"↑↓", "select step"}, {"enter", "run step"}, {"←/esc", "back to features"},
+				{"s", "run next step"}, {"i", "implement feature"}}
+		} else {
+			local = [][2]string{{"↑↓", "select feature"}, {"enter", "open tasks"}, {"→", "choose a step"},
+				{"s", "run next step"}, {"i", "implement feature"}, {"n", "new feature"}, {"e", "edit spec"}}
+		}
+	case scrTasks:
+		local = [][2]string{{"↑↓", "move"}, {"space", "check/uncheck"}, {"x", "run task"}, {"X", "run phase"},
+			{"enter", "fold phase"}, {"f", "hide done"}, {"s", "run next step"}, {"e", "edit tasks.md"}, {"esc", "back"}}
+	case scrLogs:
+		local = [][2]string{{"↑↓", "select job"}, {"pgup/pgdn", "scroll"}, {"F", "follow output"},
+			{"c", "clear finished"}, {"ctrl+x", "cancel job"}, {"esc", "back"}}
+	}
+	global = [][2]string{{"tab", "switch screen"}, {"m", "model"}, {"a", "agent"}, {"p", "permissions"},
+		{"l", "logs"}, {"h", "help"}, {"q", "quit"}}
+	return
+}
+
+// hintLines renders key hints wrapped to the terminal width.
+func (m *Model) hintLines() []string {
+	local, global := m.footerHints()
+	render := func(hs [][2]string) []string {
+		var parts []string
+		for _, h := range hs {
+			parts = append(parts, sKey.Render(h[0])+" "+sHint.Render(h[1]))
+		}
+		return parts
+	}
+	sep := sFaint.Render(" · ")
+	var lines []string
+	for _, group := range [][]string{render(local), render(global)} {
+		lines = append(lines, strings.Split(wrapJoin(group, sep, m.w), "\n")...)
+	}
+	return lines
+}
+
 func (m *Model) viewFooter() string {
 	var flash string
 	if m.flash != "" {
@@ -102,21 +146,7 @@ func (m *Model) viewFooter() string {
 			flash = sAccent2.Render(m.flash)
 		}
 	}
-	var hints [][2]string
-	switch m.screen {
-	case scrDashboard:
-		hints = [][2]string{{"↑↓", "move"}, {"→/←", "steps/features"}, {"enter", "open/run"}, {"s", "next step"}, {"i", "implement"}, {"n", "new"}, {"e", "edit"}}
-	case scrTasks:
-		hints = [][2]string{{"↑↓", "move"}, {"space", "toggle"}, {"s", "next step"}, {"x", "run task"}, {"X", "run phase"}, {"enter", "fold"}, {"f", "hide done"}, {"e", "edit"}}
-	case scrLogs:
-		hints = [][2]string{{"↑↓", "job"}, {"pgup/pgdn", "scroll"}, {"F", "follow"}, {"c", "clear"}, {"^x", "cancel"}}
-	}
-	hints = append(hints, [][2]string{{"tab", "screen"}, {"m", "model"}, {"a", "agent"}, {"l", "logs"}, {"h", "help"}, {"q", "quit"}}...)
-	var parts []string
-	for _, h := range hints {
-		parts = append(parts, sKey.Render(h[0])+" "+sMuted.Render(h[1]))
-	}
-	return truncate(flash, m.w) + "\n" + truncate(strings.Join(parts, sFaint.Render(" · ")), m.w)
+	return truncate(flash, m.w) + "\n" + strings.Join(m.hintLines(), "\n")
 }
 
 // ---------- dashboard ----------
@@ -470,7 +500,7 @@ func (m *Model) viewInput() string {
 	}
 	b.WriteString(sHeading.Render(label) + "\n")
 	b.WriteString(m.input.View() + "\n\n")
-	b.WriteString(sMuted.Render("agent ") + ag.Name() + sMuted.Render(" · model ") + sAccent.Render(displayModel(m.cfg.Model(ag.ID()))))
+	b.WriteString(sMuted.Render("agent ") + ag.Name() + sMuted.Render(" · model ") + sAccent.Render(m.modelName(m.cfg.Model(ag.ID()))))
 	if pm := m.permMode(); pm != "" {
 		b.WriteString(sMuted.Render(" · perm ") + permStyle(pm).Render(pm))
 	}
@@ -514,7 +544,7 @@ func (m *Model) viewPicker() string {
 		case pickModel:
 			label = it
 			if it == "" {
-				label = "default " + sMuted.Render("(agent's own default)")
+				label = m.modelName("") + sMuted.Render("  (from "+ag.Name()+" settings)")
 			}
 			current = it == m.cfg.Model(ag.ID()) && it != customItem
 		case pickAgent:
@@ -545,7 +575,7 @@ func (m *Model) viewPicker() string {
 // ---------- helpers ----------
 
 func bar(pct float64, w int) string {
-	p := progress.New(progress.WithGradient("#7C5CFF", "#3DDC97"), progress.WithoutPercentage(), progress.WithWidth(w))
+	p := progress.New(progress.WithGradient("#3B82F6", "#22C55E"), progress.WithoutPercentage(), progress.WithWidth(w))
 	p.Full, p.Empty = '█', '░'
 	p.EmptyColor = "#44444F"
 	return p.ViewAs(pct)

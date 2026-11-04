@@ -40,6 +40,7 @@ type Event struct {
 	// Optional metadata (set on EvResult).
 	CostUSD float64
 	IsError bool
+	Model   string // actual model reported by the agent (session start)
 }
 
 type Agent interface {
@@ -58,6 +59,24 @@ type Agent interface {
 	Command(ctx context.Context, req Request) (*exec.Cmd, error)
 	// Parser returns a fresh stateful parser turning stdout lines into events.
 	Parser() LineParser
+}
+
+// DefaultModeler is implemented by agents that can tell which model they use
+// when none is passed explicitly (e.g. from their own settings files).
+type DefaultModeler interface {
+	DefaultModel(root string) string
+}
+
+// ResolveModel returns the model that will actually be used: the selected one,
+// or the agent's configured default. "" means unknown.
+func ResolveModel(a Agent, root, selected string) string {
+	if selected != "" {
+		return selected
+	}
+	if d, ok := a.(DefaultModeler); ok {
+		return d.DefaultModel(root)
+	}
+	return ""
 }
 
 type LineParser interface {

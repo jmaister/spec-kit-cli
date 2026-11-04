@@ -54,6 +54,7 @@ type Job struct {
 	started  time.Time
 	ended    time.Time
 	cost     float64
+	model    string // actual model reported by the agent
 	lastTask string
 	err      error
 	cancel   context.CancelFunc
@@ -64,6 +65,7 @@ type Snapshot struct {
 	Started  time.Time
 	Ended    time.Time
 	Cost     float64
+	Model    string // actual model reported by the agent ("" until known)
 	LastTask string
 	Err      error
 	Lines    int
@@ -72,7 +74,8 @@ type Snapshot struct {
 func (j *Job) Snapshot() Snapshot {
 	j.mu.Lock()
 	defer j.mu.Unlock()
-	return Snapshot{j.status, j.started, j.ended, j.cost, j.lastTask, j.err, len(j.lines)}
+	return Snapshot{Status: j.status, Started: j.started, Ended: j.ended, Cost: j.cost, Model: j.model,
+		LastTask: j.lastTask, Err: j.err, Lines: len(j.lines)}
 }
 
 func (j *Job) Lines() []Line {
@@ -244,6 +247,11 @@ func (m *Manager) Start(s Spec) (*Job, error) {
 			} else {
 				for _, ev := range s.Parser.Parse(line) {
 					j.add(ev.Kind, ev.Text)
+					if ev.Model != "" {
+						j.mu.Lock()
+						j.model = ev.Model
+						j.mu.Unlock()
+					}
 					if ev.Kind == agent.EvResult {
 						j.mu.Lock()
 						j.cost += ev.CostUSD
