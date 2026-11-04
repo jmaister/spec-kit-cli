@@ -9,8 +9,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/jordiburgos/speckit-tui/internal/agent"
-	"github.com/jordiburgos/speckit-tui/internal/speckit"
+	"github.com/jmaister/spec-kit-cli/internal/agent"
+	"github.com/jmaister/spec-kit-cli/internal/speckit"
 )
 
 func (m *Model) bodyHeight() int { return max(6, m.h-4) }

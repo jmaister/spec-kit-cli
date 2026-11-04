@@ -7,7 +7,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/jordiburgos/speckit-tui/internal/config"
+	"github.com/jmaister/spec-kit-cli/internal/config"
 )
 
 func TestClaudeParser(t *testing.T) {

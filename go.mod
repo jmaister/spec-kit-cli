@@ -1,4 +1,4 @@
-module github.com/jordiburgos/speckit-tui
+module github.com/jmaister/spec-kit-cli
 
 go 1.26.1
 

@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/jordiburgos/speckit-tui/internal/speckit"
+	"github.com/jmaister/spec-kit-cli/internal/speckit"
 )
 
 type taskRow struct {

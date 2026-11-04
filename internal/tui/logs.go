@@ -9,8 +9,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/jordiburgos/speckit-tui/internal/agent"
-	"github.com/jordiburgos/speckit-tui/internal/runner"
+	"github.com/jmaister/spec-kit-cli/internal/agent"
+	"github.com/jmaister/spec-kit-cli/internal/runner"
 )
 
 const jobListWidth = 34

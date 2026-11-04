@@ -22,7 +22,7 @@ paso del flujo Spec-Driven Development con una tecla.
 ## Instalación
 
 ```bash
-go install github.com/jordiburgos/speckit-tui@latest   # o: make install
+go install github.com/jmaister/spec-kit-cli@latest   # instala el binario "spec-kit-cli"; o: make install (→ "speckit")
 speckit            # en el directorio del proyecto
 speckit -C ~/code/app -agent claude -model opus
 ```

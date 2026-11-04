@@ -5,7 +5,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/jordiburgos/speckit-tui/internal/config"
+	"github.com/jmaister/spec-kit-cli/internal/config"
 )
 
 // TemplateAgent runs any CLI from an argument template. The spec-kit command

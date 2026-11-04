@@ -10,9 +10,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/jordiburgos/speckit-tui/internal/agent"
-	"github.com/jordiburgos/speckit-tui/internal/config"
-	"github.com/jordiburgos/speckit-tui/internal/tui"
+	"github.com/jmaister/spec-kit-cli/internal/agent"
+	"github.com/jmaister/spec-kit-cli/internal/config"
+	"github.com/jmaister/spec-kit-cli/internal/tui"
 )
 
 var version = "dev"

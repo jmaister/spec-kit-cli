@@ -18,10 +18,10 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 
-	"github.com/jordiburgos/speckit-tui/internal/agent"
-	"github.com/jordiburgos/speckit-tui/internal/config"
-	"github.com/jordiburgos/speckit-tui/internal/runner"
-	"github.com/jordiburgos/speckit-tui/internal/speckit"
+	"github.com/jmaister/spec-kit-cli/internal/agent"
+	"github.com/jmaister/spec-kit-cli/internal/config"
+	"github.com/jmaister/spec-kit-cli/internal/runner"
+	"github.com/jmaister/spec-kit-cli/internal/speckit"
 )
 
 type screen int
