@@ -367,17 +367,12 @@ func (m *Model) openInput(p pendingRun, prefill string) tea.Cmd {
 
 func (m *Model) startInit() tea.Cmd {
 	ag := m.agent()
-	var bin string
-	var args []string
-	base := []string{"init", "--here", "--ai", ag.InitAI(), "--script", "sh", "--force", "--ignore-agent-tools"}
-	if _, err := exec.LookPath("specify"); err == nil {
-		bin, args = "specify", base
-	} else if _, err := exec.LookPath("uvx"); err == nil {
-		bin, args = "uvx", append([]string{"--from", "git+https://github.com/github/spec-kit.git", "specify"}, base...)
-	} else {
-		m.setFlash(true, "neither `specify` nor `uvx` found — install uv: https://docs.astral.sh/uv/")
+	bin, prefix, ok := speckit.SpecifyCommand()
+	if !ok {
+		m.setFlash(true, "specify CLI not found (nor uv/uvx/pipx). Install: %s", speckit.InstallHint)
 		return nil
 	}
+	args := append(prefix, "init", "--here", "--ai", ag.InitAI(), "--script", "sh", "--force", "--ignore-agent-tools")
 	root := m.proj.Root
 	_, err := m.jobs.Start(runner.Spec{
 		Title: "Init spec-kit (" + ag.InitAI() + ")", Step: "init", Agent: ag.ID(),

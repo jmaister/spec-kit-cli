@@ -127,6 +127,11 @@ func (m *Model) viewDashboard(h int) string {
 			sMuted.Render(truncate(m.proj.Root, m.w-12)) + "\n\n" +
 			"Press " + sKey.Render("I") + " to run " + sAccent.Render("specify init --here --ai "+m.agent().InitAI()) + "\n" +
 			"Press " + sKey.Render("a") + " to choose another agent, " + sKey.Render("h") + " for help."
+		if _, _, ok := speckit.SpecifyCommand(); !ok {
+			msg += "\n\n" + sErr.Render("The specify CLI is not installed (nor uv/uvx/pipx). Install it with:") + "\n\n" +
+				sAccent.Width(min(90, m.w-12)).Render(speckit.InstallHint) + "\n\n" +
+				sMuted.Render("then restart sk.")
+		}
 		return m.place(h, sModal.Render(msg))
 	}
 	lw := clamp(m.w*38/100, 30, 56)

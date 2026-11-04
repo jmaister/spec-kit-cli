@@ -27,7 +27,13 @@ sk                 # en el directorio del proyecto
 sk -C ~/code/app -agent claude -model opus
 ```
 
-Requisitos: el CLI del agente (`claude`, `copilot`, …) y, para `I` (init), `specify` o `uvx`.
+Requisitos: el CLI del agente (`claude`, `copilot`, …) y, para `I` (init), el CLI `specify` de spec-kit
+(o `uv`/`uvx`/`pipx`, con los que se ejecuta sin instalar):
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git
+```
 
 ## Atajos
 
