@@ -47,20 +47,31 @@ var specKitTools = []string{
 }
 
 func (c *Claude) prompt(req Request) string {
-	cmd := "/speckit." + req.Step
-	if legacyClaudeCommand(req.Root, req.Step) {
-		cmd = "/" + req.Step
-	}
+	cmd := ClaudeSlashCommand(req.Root, req.Step)
 	if req.Args != "" {
 		cmd += " " + req.Args
 	}
 	return cmd
 }
 
-// legacyClaudeCommand: spec-kit < 0.0.50 installed /plan instead of /speckit.plan.
-func legacyClaudeCommand(root, step string) bool {
-	return !fileExists(root, ".claude/commands/speckit."+step+".md") &&
-		fileExists(root, ".claude/commands/"+step+".md")
+// ClaudeSlashCommand returns the slash command spec-kit installed for a step.
+// The layout changed across spec-kit versions:
+//
+//	.claude/skills/speckit-plan/SKILL.md  -> /speckit-plan  (current: skills)
+//	.claude/commands/speckit.plan.md      -> /speckit.plan
+//	.claude/commands/plan.md              -> /plan          (oldest)
+//
+// Defaults to the current skills form when nothing is found.
+func ClaudeSlashCommand(root, step string) string {
+	switch {
+	case fileExists(root, ".claude/skills/speckit-"+step+"/SKILL.md"):
+		return "/speckit-" + step
+	case fileExists(root, ".claude/commands/speckit."+step+".md"):
+		return "/speckit." + step
+	case fileExists(root, ".claude/commands/"+step+".md"):
+		return "/" + step
+	}
+	return "/speckit-" + step
 }
 
 func fileExists(root, rel string) bool {

@@ -50,7 +50,7 @@ type Agent interface {
 	Models() []string
 	// PermissionModes lists accepted values for Request.Perm (may be nil).
 	PermissionModes() []string
-	// InitAI is the value for `specify init --ai <x>`.
+	// InitAI is the spec-kit integration key: `specify init --integration <x>`.
 	InitAI() string
 	// Available reports whether the CLI binary is installed.
 	Available() bool
@@ -97,6 +97,7 @@ func All() []Agent {
 // slash commands in non-interactive mode.
 func PromptFromCommandFile(root string, dirs []string, step, args string) (string, bool) {
 	names := []string{
+		"speckit-" + step + "/SKILL.md", // skills layout (current spec-kit)
 		"speckit." + step + ".prompt.md", "speckit." + step + ".agent.md", "speckit." + step + ".md",
 		step + ".prompt.md", step + ".md",
 	}
@@ -138,12 +139,15 @@ func fallbackPrompt(step, args string) string {
 	return p
 }
 
-// featureEnv returns the environment for a request; spec-kit scripts read
-// SPECIFY_FEATURE to pick the active feature when not on its git branch.
+// featureEnv returns the environment for a request so spec-kit scripts target
+// the selected feature regardless of git branch or .specify/feature.json:
+// current scripts resolve it from SPECIFY_FEATURE_DIRECTORY, older ones from
+// SPECIFY_FEATURE.
 func featureEnv(req Request) []string {
 	env := os.Environ()
 	if req.Feature != "" {
-		env = append(env, "SPECIFY_FEATURE="+req.Feature)
+		env = append(env, "SPECIFY_FEATURE="+req.Feature,
+			"SPECIFY_FEATURE_DIRECTORY="+filepath.Join("specs", req.Feature))
 	}
 	return env
 }

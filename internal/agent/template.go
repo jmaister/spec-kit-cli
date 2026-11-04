@@ -70,7 +70,7 @@ func init() {
 		Args:      []string{"-p", "{prompt}", "--allow-all-tools", "--model", "{model}"},
 		Models:    []string{"claude-sonnet-4.5", "claude-opus-4.5", "gpt-5", "gpt-5.1-codex"},
 		InitAI:    "copilot",
-		PromptDir: []string{".github/prompts", ".github/agents"},
+		PromptDir: []string{".github/skills", ".github/prompts", ".github/agents"},
 	}})
 }
 
@@ -84,7 +84,7 @@ func RegisterCustom(defs []config.CustomAgent) {
 			d.Name = d.ID
 		}
 		if len(d.PromptDir) == 0 {
-			d.PromptDir = []string{"." + d.ID + "/commands", ".github/prompts"}
+			d.PromptDir = []string{"." + d.ID + "/skills", "." + d.ID + "/commands", ".github/prompts"}
 		}
 		Register(&TemplateAgent{Def: d})
 	}

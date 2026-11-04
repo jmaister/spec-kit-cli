@@ -372,7 +372,7 @@ func (m *Model) startInit() tea.Cmd {
 		m.setFlash(true, "specify CLI not found (nor uv/uvx/pipx). Install: %s", speckit.InstallHint)
 		return nil
 	}
-	args := append(prefix, "init", "--here", "--ai", ag.InitAI(), "--script", "sh", "--force", "--ignore-agent-tools")
+	args := append(prefix, speckit.InitArgs(bin, prefix, ag.InitAI())...)
 	root := m.proj.Root
 	_, err := m.jobs.Start(runner.Spec{
 		Title: "Init spec-kit (" + ag.InitAI() + ")", Step: "init", Agent: ag.ID(),
@@ -556,7 +556,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.setFlash(false, "refreshed")
 		return m, nil
 	case key.Matches(msg, k.Init):
-		m.confirmMsg = fmt.Sprintf("Run `specify init --here --ai %s` in\n%s ?", m.agent().InitAI(), m.proj.Root)
+		m.confirmMsg = fmt.Sprintf("Run `specify init --here --integration %s` in\n%s ?", m.agent().InitAI(), m.proj.Root)
 		if m.proj.Initialized {
 			m.confirmMsg += "\n\n" + sWarn.Render("Project already initialized: templates/scripts will be refreshed.")
 		}

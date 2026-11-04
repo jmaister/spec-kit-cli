@@ -125,7 +125,7 @@ func (m *Model) viewDashboard(h int) string {
 	if !m.proj.Initialized {
 		msg := sHeading.Render("This directory is not a spec-kit project") + "\n\n" +
 			sMuted.Render(truncate(m.proj.Root, m.w-12)) + "\n\n" +
-			"Press " + sKey.Render("I") + " to run " + sAccent.Render("specify init --here --ai "+m.agent().InitAI()) + "\n" +
+			"Press " + sKey.Render("I") + " to run " + sAccent.Render("specify init --here --integration "+m.agent().InitAI()) + "\n" +
 			"Press " + sKey.Render("a") + " to choose another agent, " + sKey.Render("h") + " for help."
 		if _, _, ok := speckit.SpecifyCommand(); !ok {
 			msg += "\n\n" + sErr.Render("The specify CLI is not installed (nor uv/uvx/pipx). Install it with:") + "\n\n" +
@@ -435,7 +435,7 @@ func (m *Model) viewHelp() string {
 		if s.Optional {
 			opt = sMuted.Render(" (optional)")
 		}
-		steps.WriteString(fmt.Sprintf("  %s %s%s\n     %s\n", sKey.Render(fmt.Sprint(i+1)), sAccent.Render("/speckit."+s.ID), opt, sMuted.Render(s.Description)))
+		steps.WriteString(fmt.Sprintf("  %s %s%s\n     %s\n", sKey.Render(fmt.Sprint(i+1)), sAccent.Render(agent.ClaudeSlashCommand(m.proj.Root, s.ID)), opt, sMuted.Render(s.Description)))
 	}
 	col1 := global + "\n" + dash
 	col2 := tasks + "\n" + logs
@@ -466,17 +466,17 @@ func (m *Model) viewInput() string {
 		b.WriteString(sMuted.Render(" · perm ") + permStyle(pm).Render(pm))
 	}
 	if p.feature != "" {
-		b.WriteString(sMuted.Render(" · SPECIFY_FEATURE=") + p.feature)
+		b.WriteString(sMuted.Render(" · feature ") + p.feature)
 	}
-	b.WriteString("\n" + sFaint.Render(truncate(previewCommand(ag, s.ID, m.input.Value()), min(90, m.w-12))) + "\n\n")
+	b.WriteString("\n" + sFaint.Render(truncate(previewCommand(ag, m.proj.Root, s.ID, m.input.Value()), min(90, m.w-12))) + "\n\n")
 	b.WriteString(sKey.Render("enter") + sMuted.Render(" run  ") + sKey.Render("alt+enter") + sMuted.Render(" newline  ") + sKey.Render("esc") + sMuted.Render(" cancel"))
 	return sModal.Width(min(96, m.w-4)).Render(b.String())
 }
 
-func previewCommand(ag agent.Agent, step, args string) string {
+func previewCommand(ag agent.Agent, root, step, args string) string {
 	args = strings.Join(strings.Fields(args), " ")
 	if ag.ID() == "claude" {
-		c := "$ claude -p \"/speckit." + step
+		c := "$ claude -p \"" + agent.ClaudeSlashCommand(root, step)
 		if args != "" {
 			c += " " + args
 		}

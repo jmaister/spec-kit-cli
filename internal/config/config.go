@@ -20,7 +20,7 @@ type CustomAgent struct {
 	Command   string   `json:"command"`
 	Args      []string `json:"args"`
 	Models    []string `json:"models,omitempty"`
-	InitAI    string   `json:"init_ai,omitempty"`     // value for `specify init --ai`
+	InitAI    string   `json:"init_ai,omitempty"`     // value for `specify init --integration`
 	PromptDir []string `json:"prompt_dirs,omitempty"` // where spec-kit installs this agent's command files
 }
 

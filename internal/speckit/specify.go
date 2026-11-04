@@ -1,9 +1,12 @@
 package speckit
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 )
 
 const specKitRepo = "git+https://github.com/github/spec-kit.git"
@@ -29,6 +32,28 @@ func SpecifyCommand() (bin string, prefix []string, ok bool) {
 		return p, []string{"run", "--spec", specKitRepo, "specify"}, true
 	}
 	return "", nil, false
+}
+
+// InitArgs builds `specify init` arguments for the current directory.
+//
+// spec-kit renamed `--ai` to `--integration` and added `--non-interactive`
+// (needed so init never waits on a prompt). uvx/pipx always run the latest
+// release; an installed `specify` may be older, so its help is checked.
+func InitArgs(bin string, prefix []string, integration string) []string {
+	modern := true
+	if len(prefix) == 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		out, err := exec.CommandContext(ctx, bin, "init", "--help").CombinedOutput()
+		if err == nil && !strings.Contains(string(out), "--integration") && strings.Contains(string(out), "--ai") {
+			modern = false
+		}
+	}
+	args := []string{"init", "--here", "--force", "--script", "sh", "--ignore-agent-tools"}
+	if modern {
+		return append(args, "--non-interactive", "--integration", integration)
+	}
+	return append(args, "--ai", integration)
 }
 
 func lookPath(name string) string {

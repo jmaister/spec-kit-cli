@@ -59,8 +59,12 @@ se va a lanzar, para que aprendas el flujo sin tener que recordarlo.
 - **Estado desde disco**: se lee `specs/NNN-*/` (spec.md, plan.md, tasks.md, checklists/…) y
   `.specify/memory/constitution.md` cada 1.5 s, así que cuando el agente marca `[X]` en `tasks.md`
   la barra avanza en vivo. Los pasos sin artefacto (analyze) se registran en `.specify/speckit-tui.json`.
-- **Feature activa**: los comandos se lanzan con `SPECIFY_FEATURE=<feature>`, que los scripts de
-  spec-kit usan para elegir la feature aunque no estés en su rama git.
+- **Feature activa**: los comandos se lanzan con `SPECIFY_FEATURE_DIRECTORY=specs/<feature>` (y
+  `SPECIFY_FEATURE=<feature>` para versiones antiguas), que los scripts de spec-kit usan para elegir
+  la feature aunque no estés en su rama git.
+- **Versiones de spec-kit**: `I` usa `specify init --integration <agente> --non-interactive` (o `--ai`
+  si el `specify` instalado es antiguo). Los comandos se detectan según el layout instalado:
+  skills `/speckit-plan` (actual), `/speckit.plan` o `/plan`.
 - **Spinner por tarea**: durante `implement` se sigue el último `T###` que menciona el agente.
 - **Logs**: salida legible (texto, herramientas, errores, coste) y el log crudo en
   `~/.cache/speckit-tui/logs/`.
@@ -73,9 +77,9 @@ se va a lanzar, para que aprendas el flujo sin tener que recordarlo.
 `internal/agent` define la interfaz `Agent` (`Command`, `Parser`, `Models`, `PermissionModes`,
 `InitAI`). Incluidos:
 
-- **claude** — `claude -p "/speckit.<step> …" --output-format stream-json --verbose --model …`
+- **claude** — `claude -p "/speckit-<step> …" --output-format stream-json --verbose --model …`
 - **copilot** — `copilot -p <prompt> --allow-all-tools --model …`; el prompt se genera expandiendo
-  `.github/prompts/speckit.<step>.prompt.md` con `$ARGUMENTS`.
+  `.github/skills/speckit-<step>/SKILL.md` (o `.github/prompts/speckit.<step>.prompt.md`) con `$ARGUMENTS`.
 
 Para añadir otro CLI sin escribir Go, decláralo en `~/.config/speckit-tui/config.json`:
 

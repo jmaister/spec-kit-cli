@@ -27,11 +27,14 @@ func TestClaudeCommand(t *testing.T) {
 	os.MkdirAll(filepath.Join(root, ".claude/commands"), 0o755)
 	os.WriteFile(filepath.Join(root, ".claude/commands/speckit.plan.md"), []byte("x"), 0o644)
 	cmd, _ := (&Claude{Bin: "claude"}).Command(context.Background(), Request{Root: root, Step: "plan", Args: "use Go", Model: "opus", Perm: "acceptEdits", Feature: "001-x"})
-	if cmd.Args[2] != "/speckit.plan use Go" || !slices.Contains(cmd.Args, "opus") {
+	if cmd.Args[2] != "/speckit.plan use Go" /* legacy commands layout in this fixture */ || !slices.Contains(cmd.Args, "opus") {
 		t.Fatalf("args %q", cmd.Args)
 	}
 	if !slices.Contains(cmd.Env, "SPECIFY_FEATURE=001-x") {
 		t.Error("missing SPECIFY_FEATURE")
+	}
+	if !slices.Contains(cmd.Env, "SPECIFY_FEATURE_DIRECTORY=specs/001-x") {
+		t.Error("missing SPECIFY_FEATURE_DIRECTORY")
 	}
 }
 
@@ -47,5 +50,36 @@ func TestTemplateAgent(t *testing.T) {
 	cmd, _ = a.Command(context.Background(), Request{Root: root, Step: "tasks", Model: "gpt-5"})
 	if cmd.Args[len(cmd.Args)-1] != "gpt-5" {
 		t.Fatalf("args %q", cmd.Args)
+	}
+}
+
+func TestClaudeSlashCommandLayouts(t *testing.T) {
+	root := t.TempDir()
+	if got := ClaudeSlashCommand(root, "plan"); got != "/speckit-plan" {
+		t.Errorf("default = %q", got)
+	}
+	os.MkdirAll(filepath.Join(root, ".claude/commands"), 0o755)
+	os.WriteFile(filepath.Join(root, ".claude/commands/plan.md"), []byte("x"), 0o644)
+	if got := ClaudeSlashCommand(root, "plan"); got != "/plan" {
+		t.Errorf("legacy = %q", got)
+	}
+	os.WriteFile(filepath.Join(root, ".claude/commands/speckit.plan.md"), []byte("x"), 0o644)
+	if got := ClaudeSlashCommand(root, "plan"); got != "/speckit.plan" {
+		t.Errorf("commands = %q", got)
+	}
+	os.MkdirAll(filepath.Join(root, ".claude/skills/speckit-plan"), 0o755)
+	os.WriteFile(filepath.Join(root, ".claude/skills/speckit-plan/SKILL.md"), []byte("x"), 0o644)
+	if got := ClaudeSlashCommand(root, "plan"); got != "/speckit-plan" {
+		t.Errorf("skills = %q", got)
+	}
+}
+
+func TestPromptFromSkill(t *testing.T) {
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, ".github/skills/speckit-plan"), 0o755)
+	os.WriteFile(filepath.Join(root, ".github/skills/speckit-plan/SKILL.md"), []byte("---\nname: speckit-plan\n---\nPlan: $ARGUMENTS"), 0o644)
+	got, ok := PromptFromCommandFile(root, []string{".github/skills"}, "plan", "go")
+	if !ok || got != "Plan: go" {
+		t.Errorf("got %q %v", got, ok)
 	}
 }
