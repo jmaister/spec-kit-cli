@@ -22,7 +22,8 @@ paso del flujo Spec-Driven Development con una tecla.
 ## Instalación
 
 ```bash
-go install github.com/jmaister/spec-kit-cli/cmd/sk@latest   # o: make install
+make install                 # → ~/.local/bin/sk  (PREFIX=/otra/ruta para cambiarlo)
+go install github.com/jmaister/spec-kit-cli/cmd/sk@latest   # → $(go env GOPATH)/bin, debe estar en el PATH
 sk                 # en el directorio del proyecto
 sk -C ~/code/app -agent claude -model opus
 ```
